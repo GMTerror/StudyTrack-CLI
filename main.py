@@ -44,13 +44,16 @@ for table in tables:
 
 # Menu
 def menu():
-    sub, td = fetch_sub()
+    td, ua = fetch_sub()
     os.system('cls' if os.name == 'nt' else 'clear')
     print("StudyTrack CLI - Main Menu\n")
-    if sub == "No subjects added yet":
-        print("First add the syllabus to get subject suggestions here using the 9th option.\n")
+    if td == "N/A":
+        print("First add the syllabus to get subject suggestions here using the 9th option.")
     else:
-        print("Today's Subject: ", td, "\n")
+        print("Today's Subject: ", td)
+    if ua != "N/A":
+        print("Upcoming Assignment: ", ua)
+    print()
     print("1. Progress Report")
     print("2. Add Study Session")
     print("3. View Study Sessions")
@@ -606,17 +609,30 @@ def view_syllabus():
 
 # Fetch Subjects
 def fetch_sub():
+    info = ()
     try:
         cursor.execute("SELECT DISTINCT Subject FROM syllabus")
         subs = [row[0] for row in cursor.fetchall()]
         if len(subs) == 0:
-            return "No subjects added yet", "N/A"
+            info += ("N/A",)
         d_subs = subs + random.choices(subs, k=7-len(subs)) if len(subs) < 7 else subs
         days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
         d = {days[i]:d_subs[i] for i in range(7)}
-        return subs, d[dt.datetime.now().strftime("%A")]
+        info += (d[dt.datetime.now().strftime("%A")],)
     except Error as e:
         print(f"Error fetching subjects: {e.msg}")
+
+    try:
+        cursor.execute("SELECT DueDate, Subject, Topic FROM assignments WHERE DueDate > CURDATE() and Status = 'NS' ORDER BY DueDate")
+        data = cursor.fetchone()
+        if len(data) == 0:
+            info += ("N/A",)
+        else:
+            info += (f"{data[1]} - {data[2]} (Due: {data[0]})",)
+    except Error as e:
+        print(f"Error fetching assignments: {e.msg}")
+
+    return info
     
 
 # Main Loop
